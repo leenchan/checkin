@@ -1,0 +1,21 @@
+name: Checkin oshwhub.com
+
+on:
+  workflow_dispatch:
+
+env:
+  ZIP_PASSWD: ${{ secrets.ZIP_PASSWD }}
+  
+jobs:
+  main:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Extract Profile
+      run: unzip -P "${{ env.ZIP_PASSWD }}" profile.zip
+
+    - name: Checkin
+      run: sh checkin.sh checkin oshwhub.com
