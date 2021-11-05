@@ -1,13 +1,16 @@
 #!/bin/sh
 CUR_DIR=$(cd "$(dirname "$0")";pwd)
-[ -f "${CUR_DIR}/.profile" ] && . ${CUR_DIR}/.profile
 
 _get_input_value() {
 	echo "$1" | grep -Eo "<input.*name=\"$2\".*" | head -n1 | grep -Eo 'value="[^"]*"' | awk '{gsub(/(^value="|"$)/,"",$0); print $0}'
 }
 
+_get_coockies() {
+	echo "$1" | grep -Eio "^Set-Cookie:\s*[^=]+=[^=^;]*" | sed -E -e "s/^Set-Cookie:\s*//ig" | tr -d '\r'
+}
+
 _get_coockie() {
-	echo "$1" | grep -Eio "^Set-Cookie:\s*$2=.*" | tr -d ' ' | awk -F'[:;]' '{print $2}' | sed -E "s/^$2=//" | tr -d '\r\n'
+	_get_coockies "$1" | grep -Eio "^$2=.*" | sed -E "s/^$2=//"
 }
 
 _get_location() {
@@ -18,12 +21,45 @@ _get_code() {
 	echo "$1" | grep -Eo '"code"\s*:\s*[0-9]+' | tr -d ' ' | awk -F':' '{print $2}'
 }
 
+_load_cookie() {
+	[ -f "$COOKIE_FILE" ] || return 1
+	_load_cookies | grep -E "^${1}=" | sed -E "s/^${1}=//"
+}
+
+_load_cookies() {
+	cat "$COOKIE_FILE"
+}
+
+_set_cookie() {
+	[ -f "$COOKIE_FILE" ] || touch "$COOKIE_FILE" || return 1
+	if grep -Eq "^${1}=" "$COOKIE_FILE"; then
+		sed -Ei "s/^${1}=.*/${1}=${2}/" "$COOKIE_FILE" && return 0
+	else
+		echo "${1}=${2}" >> "$COOKIE_FILE" && return 0
+	fi
+	return 1
+}
+
+_set_cookies() {
+	while read LINE
+	do
+		[ -z "$LINE" ] || {
+			__C_NAME__=$(echo "$LINE" | grep -Eo '^[^=]+')
+			__C_VALUE__=$(echo "$LINE" | grep -Eo '=.*' | sed 's/^=//')
+			_set_cookie "$__C_NAME__" "$__C_VALUE__"
+		} 
+	done <<-EOF
+	$1
+	EOF
+}
+
 _curl() {
 	[ -z "$1" ] && return 1
 	__CURL_URL__=$(echo "$1" | tr -d '\r\n ')
 	__CURL_UA__="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36"
 	__CURL_METHOD__=""
 	__CURL_OPTION__="-sk -H 'user-agent: ${__CURL_UA__}' -H 'sec-ch-ua-platform: \"Windows\"'"
+	# __CURL_OPTION__="${__CURL_OPTION__} --proxy 'socks5://172.16.2.2:10808'"
 	__CURL_COOKIE__=""
 	__CURL_POST_DATA__=""
 	__CURL_REFERER=""
@@ -44,6 +80,8 @@ _curl() {
 			} else if ($1=="--data" && $2!="") {
 				gsub(/^--data=/,"",$0)
 				print "__CURL_POST_DATA__=\"${__CURL_POST_DATA__} --data-raw \\\""$0"\\\"\""
+			} else if ($1=="--follow") {
+				print "__CURL_OPTION__=\"${__CURL_OPTION__} -L\""
 			} else if ($1=="--head") {
 				print "__CURL_OPTION__=\"${__CURL_OPTION__} -i\""
 			} else if ($1=="--head-only") {
@@ -72,21 +110,6 @@ _curl() {
 	return $?
 }
 
-_load_cookie() {
-	[ -f "$COOKIE_FILE" ] || return 1
-	cat "$COOKIE_FILE" | grep -E "^${1}=" | sed -E "s/^${1}=//"
-}
-
-_set_cookie() {
-	[ -f "$COOKIE_FILE" ] || touch "$COOKIE_FILE" || return 1
-	if grep -Eq "^${1}=" "$COOKIE_FILE"; then
-		sed -Ei "s/^${1}=.*/${1}=${2}/" "$COOKIE_FILE" && return 0
-	else
-		echo "${1}=${2}" >> "$COOKIE_FILE" && return 0
-	fi
-	return 1
-}
-
 _random() {
 	__DIFF__=$(($2-$1+1))
 	__RANDOM__=$$
@@ -104,7 +127,19 @@ _delay() {
 	sleep $__DELAY__
 }
 
+_init() {
+	[ -f "${CUR_DIR}/.profile" ] && {
+		while read LINE
+		do
+			eval "$LINE"
+		done <<-EOF
+		$(grep -E "^[A-Z]" "${CUR_DIR}/.profile" | tr -d '\n')
+		EOF
+	}
+}
+
 _oshwhub_login() {
+	# 1
 	__RES__=$(_curl 'https://passport.szlcsc.com/login?service=https%3A%2F%2Foshwhub.com%2Flogin%3Ff%3Doshwhub' --head)
 	__DATA_LT__=$(_get_input_value "$__RES__" "lt")
 	__DATA_EXECUTION__=$(_get_input_value "$__RES__" "execution")
@@ -112,21 +147,23 @@ _oshwhub_login() {
 	__DATA_LOGINURL__="https%3A%2F%2Fpassport.szlcsc.com%2Flogin%3Fservice%3Dhttps%253A%252F%252Foshwhub.com%252Flogin%253Ff%253Doshwhub"
 	__DATA_USERNAME__="${OSHWHUB_USERNAME}"
 	__DATA_PASSWORD__="${OSHWHUB_PASSOWRD}"
+	__COOKIE_ALL__=$(_get_coockies "$__RES__")
+	_set_cookies "$__COOKIE_ALL__"
+	# 2
 	__DATA__="lt=${__DATA_LT__}&execution=${__DATA_EXECUTION__}&_eventId=${__DATA_EVENTID__}&loginUrl=${__DATA_LOGINURL__}&afsId=&sig=&token=&scene=login&loginFromType=shop&showCheckCodeVal=false&pwdSource=&username=${__DATA_USERNAME__}&password=${__DATA_PASSWORD__}&rememberPwd=yes"
-	__COOKIE_ACW_TC__=$(_get_coockie "$__RES__" "acw_tc")
-	__COOKIE_SESSION__=$(_get_coockie "$__RES__" "SESSION")
-	__COOKIE__="acw_tc=${__COOKIE_ACW_TC__}; SESSION=${__COOKIE_SESSION__}"
-
+	__COOKIE__=$(echo "$__COOKIE_ALL__" | tr '\n' ';')
 	# echo "Cookie:"
 	# echo "$__COOKIE__"
 	# echo "Data:"
 	# echo "$__DATA__"
-	__RES__=$(_curl 'https://passport.szlcsc.com/login' --cookie="${__COOKIE__}" --data="${__DATA__}" --referer="https://passport.szlcsc.com/login?service=https%3A%2F%2Foshwhub.com%2Flogin%3Ff%3Doshwhub" --head)
+	__RES__=$(_curl 'https://passport.szlcsc.com/login' --cookie="${__COOKIE__}" --data="${__DATA__}" --referer="https://passport.szlcsc.com/login?service=https%3A%2F%2Foshwhub.com%2Flogin%3Ff%3Doshwhub" --follow --head)
 	__LOCATION__=$(_get_location "$__RES__")
 	[ -z "$__LOCATION__" ] && {
 		echo "$__RES__"
 		return 1
 	}
+
+	# 3
 	echo "[302] $__LOCATION__"
 	__RES__=$(_curl "$__LOCATION__" --referer="https://passport.szlcsc.com/login" --head-only)
 	__COOKIE_ACW_TC__=$(_get_coockie "$__RES__" "acw_tc")
@@ -135,6 +172,7 @@ _oshwhub_login() {
 	_set_cookie "acw_tc" "${__COOKIE_ACW_TC__}"
 	_set_cookie "CASAuth" "${__COOKIE_CASAUTH__}"
 
+	# 4
 	__COOKIE__="acw_tc=${__COOKIE_ACW_TC__}; CASAuth=${__COOKIE_CASAUTH__}"
 	# echo "Cookie:"
 	# echo "$__COOKIE__"
@@ -159,7 +197,7 @@ _oshwhub_refresh_session() {
 	_set_cookie "oshwhub_session" "${__COOKIE_OSHWHUB_SESSION__}"
 	_set_cookie "oshwhubReferer" "${__COOKIE_OSHWHUBREFERER__}"
 	[ -z "$__COOKIE_OSHWHUB_SESSION__" ] && echo "[ERR] Failed to refresh session." && return 1
-	return 0
+	echo "[OK] Success to refresh session." && return 0
 }
 
 _oshwhub_check_login() {
@@ -181,27 +219,15 @@ _oshwhub_checkin() {
 }
 
 checkin_oshwhub() {
+	_init
 	COOKIE_FILE="$CUR_DIR/.oshwhub_cookie"
-	_oshwhub_check_login || _oshwhub_refresh_session || _oshwhub_login || exit 0
+	_oshwhub_check_login || _oshwhub_refresh_session || _oshwhub_login || return 1
 	# _delay
 	_oshwhub_checkin
 }
 
-checkin() {
-	case "$1" in
-		"oshwhub"|"oshwhub.com")
-			checkin_oshwhub
-			;;
-	esac
-	return 0
-}
-
 case "$1" in
-	"checkin")
-		shift
-		checkin "$@"
+	"oshwhub"|"oshwhub.com")
+		checkin_oshwhub
 		;;
 esac
-
-
-
