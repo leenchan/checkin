@@ -23,7 +23,7 @@ jobs:
     - uses: microsoft/playwright-github-action@v1
 
     - name: Install dependencies and run tests
-      run: npm install && npm test
+      run: cd ikuuu && npm install && node checkin.js
 #     - name: Extract Profile
 #       run: unzip -P "${{ env.ZIP_PASSWD }}" profile.zip
 
