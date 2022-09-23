@@ -18,9 +18,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
-    - uses: actions/setup-node@v1
+    - uses: actions/setup-node@main
 
-    - uses: microsoft/playwright-github-action@v1
+    - uses: microsoft/playwright-github-action@main
 
     - name: Install dependencies and run tests
       run: cd ikuuu && npm install && node checkin.js
