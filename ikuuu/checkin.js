@@ -3,9 +3,9 @@ const { chromium } = require('playwright');
 const { solve } = require('recaptcha-solver');
 
 (async () => {
-  const { USERNAME, PASSWORD } = process.env;
-  if (!USERNAME || !PASSWORD) {
-    console.log('[ERR] require USERNAME / PASSWORD');
+  const { IKUUU_USERNAME, IKUUU_PASSWORD } = process.env;
+  if (!IKUUU_USERNAME || !IKUUU_PASSWORD) {
+    console.log('[ERR] require IKUUU_USERNAME / IKUUU_PASSWORD');
     return;
   }
   const browser = await chromium.launch({
@@ -22,9 +22,9 @@ const { solve } = require('recaptcha-solver');
   // Go to https://ikuuu.dev/auth/login
   await page.goto('https://ikuuu.dev/auth/login');
 
-  await page.locator('input[name="email"]').fill(USERNAME);
+  await page.locator('input[name="email"]').fill(IKUUU_USERNAME);
 
-  await page.locator('input[name="password"]').fill(PASSWORD);
+  await page.locator('input[name="password"]').fill(IKUUU_PASSWORD);
 
   try {
     const recaptcha = await page.waitForSelector('iframe[title="reCAPTCHA"]', { state: 'attached', timeout: 5000 });
