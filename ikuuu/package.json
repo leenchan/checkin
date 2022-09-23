@@ -1,0 +1,17 @@
+{
+  "name": "ikuuu",
+  "version": "1.0.0",
+  "description": "test",
+  "repository": "none",
+  "main": "checkin.js",
+  "dependencies": {
+    "playwright": "^1.26.0",
+    "playwright-core": "^1.26.0",
+    "recaptcha-solver": "^0.2.10"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
