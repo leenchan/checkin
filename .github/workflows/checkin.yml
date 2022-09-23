@@ -9,7 +9,7 @@ env:
 #   ZIP_PASSWD: ${{ secrets.ZIP_PASSWD }}
 
 jobs:
-  main:
+  ikuuu:
     runs-on: ubuntu-latest
 #     container:
 #       image: mcr.microsoft.com/playwright
