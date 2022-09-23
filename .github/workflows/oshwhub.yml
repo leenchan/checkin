@@ -4,18 +4,28 @@ on:
   workflow_dispatch:
 
 env:
-  ZIP_PASSWD: ${{ secrets.ZIP_PASSWD }}
-  
+  IKUUU_USERNAME: ${{ secrets.IKUUU_USERNAME }}
+  IKUUU_PASSWORD: ${{ secrets.IKUUU_PASSWORD }}
+#   ZIP_PASSWD: ${{ secrets.ZIP_PASSWD }}
+
 jobs:
   main:
     runs-on: ubuntu-latest
+#     container:
+#       image: mcr.microsoft.com/playwright
 
     steps:
     - name: Checkout
       uses: actions/checkout@main
 
-    - name: Extract Profile
-      run: unzip -P "${{ env.ZIP_PASSWD }}" profile.zip
+    - uses: actions/setup-node@v1
 
-    - name: Checkin
-      run: sh checkin.sh checkin oshwhub.com
+    - uses: microsoft/playwright-github-action@v1
+
+    - name: Install dependencies and run tests
+      run: npm install && npm test
+#     - name: Extract Profile
+#       run: unzip -P "${{ env.ZIP_PASSWD }}" profile.zip
+
+#     - name: Checkin
+#       run: sh checkin.sh checkin oshwhub.com
