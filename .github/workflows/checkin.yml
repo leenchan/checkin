@@ -26,6 +26,14 @@ jobs:
 
     - name: Install dependencies and run tests
       run: cd ikuuu && npm install && node checkin.js
+      
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        retain_days: 1
+        keep_minimum_runs: 6
 #     - name: Extract Profile
 #       run: unzip -P "${{ env.ZIP_PASSWD }}" profile.zip
 
