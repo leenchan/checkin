@@ -3,7 +3,7 @@ name: BBS
 on:
   workflow_dispatch:
   schedule:
-    - cron: 0,30 * * * *
+    - cron: 1/120 * * * *
 
 env:
   IKUUU_USERNAME: ${{ secrets.IKUUU_USERNAME }}
